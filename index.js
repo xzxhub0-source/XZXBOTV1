@@ -1,74 +1,82 @@
 const axios = require("axios");
 
-// ================= CONFIG =================
-const RAILWAY_URL = "https://xzxbotv1-production.up.railway.app/xzx"; // Your endpoint
-const POLL_INTERVAL = 10000; // 10 seconds
-const UNIVERSE_ID = "12399211456"; // Universe ID for your game
-const DATASTORE = "RailwayQueue";
-// =========================================
+// ==== CONFIG ====
+const RAILWAY_URL = process.env.RAILWAY_URL || "YOUR_RAILWAY_ENDPOINT";
+const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY || "YOUR_API_KEY";
+const UNIVERSE_ID = "109983668079237"; // Replace with your Roblox game ID
 
-// API Key stored as environment variable
-const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
-
-if (!ROBLOX_API_KEY) {
-  console.error("🚨 ROBLOX_API_KEY not set in environment variables!");
-  process.exit(1);
-}
-
-const HEADERS = {
-  "x-api-key": ROBLOX_API_KEY
-};
-
-// LIST KEYS
-async function listKeys() {
-  const res = await axios.get(
-    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/keys?datastoreName=${DATASTORE}`,
-    { headers: HEADERS }
-  );
-  return res.data.keys || [];
-}
-
-// GET VALUE
-async function getEntry(key) {
-  const res = await axios.get(
-    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/entry`,
-    {
-      headers: HEADERS,
-      params: { datastoreName: DATASTORE, entryKey: key }
+// ==== HELPERS ====
+async function fetchDataStoreKeys() {
+    try {
+        const res = await axios.get(
+            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries`,
+            {
+                headers: { "x-api-key": ROBLOX_API_KEY }
+            }
+        );
+        return res.data.entries || [];
+    } catch (err) {
+        console.error("Error fetching DataStore keys:", err.message);
+        return [];
     }
-  );
-  return res.data;
 }
 
-// DELETE ENTRY
-async function deleteEntry(key) {
-  await axios.delete(
-    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/entry`,
-    {
-      headers: HEADERS,
-      params: { datastoreName: DATASTORE, entryKey: key }
+async function fetchDataStoreEntry(key) {
+    try {
+        const res = await axios.get(
+            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries/${key}`,
+            {
+                headers: { "x-api-key": ROBLOX_API_KEY }
+            }
+        );
+        return res.data;
+    } catch (err) {
+        console.error(`Error fetching DataStore entry ${key}:`, err.message);
+        return null;
     }
-  );
 }
 
-// POLL LOOP
+async function deleteDataStoreEntry(key) {
+    try {
+        await axios.delete(
+            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries/${key}`,
+            {
+                headers: { "x-api-key": ROBLOX_API_KEY }
+            }
+        );
+    } catch (err) {
+        console.error(`Error deleting DataStore entry ${key}:`, err.message);
+    }
+}
+
+async function sendToRailway(data) {
+    try {
+        await axios.post(RAILWAY_URL, data);
+        console.log("Sent to Railway:", data);
+    } catch (err) {
+        console.error("Error sending to Railway:", err.message);
+    }
+}
+
+// ==== MAIN LOOP ====
 async function poll() {
-  try {
-    const keys = await listKeys();
-    for (const key of keys) {
-      const payload = await getEntry(key);
+    const keys = await fetchDataStoreKeys();
 
-      await axios.post(RAILWAY_URL, payload, {
-        headers: { "Content-Type": "application/json" }
-      });
+    for (const keyObj of keys) {
+        const key = keyObj.key;
+        const entry = await fetchDataStoreEntry(key);
+        if (!entry) continue;
 
-      console.log("✅ Sent:", payload.name);
-      await deleteEntry(key);
+        // Send to Railway
+        await sendToRailway(entry);
+
+        // Delete processed entry
+        await deleteDataStoreEntry(key);
     }
-  } catch (e) {
-    console.error("Poll error:", e.response?.data || e.message);
-  }
+
+    setTimeout(poll, 5000); // poll every 5 seconds
 }
 
-setInterval(poll, POLL_INTERVAL);
-console.log("🚀 Roblox → Railway bridge online. Polling every 10s...");
+// ==== START ====
+console.log("Starting XZX Base Finder bridge...");
+poll();
