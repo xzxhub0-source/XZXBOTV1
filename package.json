@@ -1,13 +1,15 @@
-{
-  "name": "xzx-base-finder",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "discord.js": "^14.14.1",
-    "express": "^4.18.2"
-  }
+import axios from "axios";
+
+// Config
+const RAILWAY_URL = "https://xzxbotv1-production.up.railway.app/xzx";
+const POLL_INTERVAL = 10000;
+const UNIVERSE_ID = "12399211456";
+const DATASTORE = "RailwayQueue";
+const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
+
+if (!ROBLOX_API_KEY) {
+  console.error("🚨 ROBLOX_API_KEY not set!");
+  process.exit(1);
 }
+
+// rest of code is the same
