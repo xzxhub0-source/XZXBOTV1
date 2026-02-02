@@ -1,19 +1,42 @@
 import express from "express";
-import fetch from "node-fetch";
+import { Client, GatewayIntentBits } from "discord.js";
 
 const app = express();
 app.use(express.json());
 
-// READ FROM RAILWAY VARIABLE
-const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
+// ENV VARIABLES
+const TOKEN = process.env.DISCORD_TOKEN;
+const CHANNEL_ID = process.env.BASE_FINDER_CHANNEL_ID;
+const PORT = process.env.PORT || 3000;
 
-if (!DISCORD_WEBHOOK) {
-  console.error("DISCORD_WEBHOOK variable is missing");
+// DISCORD CLIENT
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds
+  ]
+});
+
+// READY
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
+// HARD-LOCK SEND FUNCTION
+async function sendToBaseFinder(embed) {
+  const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
+  if (!channel) return;
+
+  await channel.send({ embeds: [embed] });
 }
 
+// ROBLOX → RAILWAY ENDPOINT
 app.post("/xzx", async (req, res) => {
   try {
     const { name, worth, players, jobId, joinLink, timestamp } = req.body;
+
+    if (!name || !worth) {
+      return res.status(400).json({ success: false });
+    }
 
     const embed = {
       title: "| XZX HUB | BASE FINDER |",
@@ -21,24 +44,17 @@ app.post("/xzx", async (req, res) => {
       fields: [
         { name: "📛 Name", value: name, inline: false },
         { name: "💰 Worth", value: worth, inline: false },
-        { name: "👥 Players", value: players, inline: false },
-        { name: "🆔 Job ID (Mobile)", value: jobId, inline: false },
-        { name: "🆔 Job ID (PC)", value: jobId, inline: false },
-        { name: "🌐 Join Link", value: `[Click to Join](${joinLink})`, inline: false }
+        { name: "👥 Players", value: players || "Unknown", inline: false },
+        { name: "🆔 Job ID (Mobile)", value: jobId || "N/A", inline: false },
+        { name: "🆔 Job ID (PC)", value: jobId || "N/A", inline: false },
+        { name: "🌐 Join Link", value: joinLink || "N/A", inline: false }
       ],
       footer: {
-        text: `| PROVIDED BY XZX HUB | ${timestamp} |`
+        text: `| PROVIDED BY XZX HUB | ${timestamp || new Date().toLocaleString()} |`
       }
     };
 
-    await fetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: "XZX HUB",
-        embeds: [embed]
-      })
-    });
+    await sendToBaseFinder(embed);
 
     res.json({ success: true });
   } catch (err) {
@@ -47,7 +63,10 @@ app.post("/xzx", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+// START SERVER
 app.listen(PORT, () => {
-  console.log("XZX HUB Railway server running");
+  console.log(`🚀 Railway server running on port ${PORT}`);
 });
+
+// LOGIN BOT
+client.login(TOKEN);
