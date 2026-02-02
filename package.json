@@ -1,15 +1,13 @@
-import axios from "axios";
-
-// Config
-const RAILWAY_URL = "https://xzxbotv1-production.up.railway.app/xzx";
-const POLL_INTERVAL = 10000;
-const UNIVERSE_ID = "12399211456";
-const DATASTORE = "RailwayQueue";
-const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
-
-if (!ROBLOX_API_KEY) {
-  console.error("🚨 ROBLOX_API_KEY not set!");
-  process.exit(1);
+{
+  "name": "xzx-base-finder",
+  "version": "1.0.0",
+  "description": "Roblox → Railway poller for BrainrotFinder",
+  "main": "index.cjs",
+  "scripts": {
+    "start": "node index.cjs"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "type": "commonjs"
 }
-
-// rest of code is the same
