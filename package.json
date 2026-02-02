@@ -1,13 +1,16 @@
 {
   "name": "xzx-base-finder",
   "version": "1.0.0",
-  "description": "Roblox → Railway poller for BrainrotFinder",
+  "description": "Fetch Roblox DataStore keys for Universe",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "axios": "^1.6.0"
   },
-  "type": "commonjs"
+  "engines": {
+    "node": "22.x"
+  }
 }
