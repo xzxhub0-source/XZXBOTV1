@@ -1,28 +1,74 @@
-app.post("/xzx", async (req, res) => {
-  console.log("📥 Incoming request from Roblox");
-  console.log(req.body);
+const axios = require("axios");
 
-  try {
-    const { name, worth } = req.body;
+// ================= CONFIG =================
+const RAILWAY_URL = "https://xzxbotv1-production.up.railway.app/xzx"; // Your endpoint
+const POLL_INTERVAL = 10000; // 10 seconds
+const UNIVERSE_ID = "12399211456"; // Universe ID for your game
+const DATASTORE = "RailwayQueue";
+// =========================================
 
-    if (!name || !worth) {
-      console.log("❌ Missing data");
-      return res.status(400).json({ success: false });
+// API Key stored as environment variable
+const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY;
+
+if (!ROBLOX_API_KEY) {
+  console.error("🚨 ROBLOX_API_KEY not set in environment variables!");
+  process.exit(1);
+}
+
+const HEADERS = {
+  "x-api-key": ROBLOX_API_KEY
+};
+
+// LIST KEYS
+async function listKeys() {
+  const res = await axios.get(
+    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/keys?datastoreName=${DATASTORE}`,
+    { headers: HEADERS }
+  );
+  return res.data.keys || [];
+}
+
+// GET VALUE
+async function getEntry(key) {
+  const res = await axios.get(
+    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/entry`,
+    {
+      headers: HEADERS,
+      params: { datastoreName: DATASTORE, entryKey: key }
     }
+  );
+  return res.data;
+}
 
-    const embed = {
-      title: "| XZX HUB | BASE FINDER |",
-      color: 16753920,
-      description: `**${name}**\nWorth: ${worth}`
-    };
+// DELETE ENTRY
+async function deleteEntry(key) {
+  await axios.delete(
+    `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/datastore/entries/entry`,
+    {
+      headers: HEADERS,
+      params: { datastoreName: DATASTORE, entryKey: key }
+    }
+  );
+}
 
-    const channel = await client.channels.fetch(CHANNEL_ID);
-    await channel.send({ embeds: [embed] });
+// POLL LOOP
+async function poll() {
+  try {
+    const keys = await listKeys();
+    for (const key of keys) {
+      const payload = await getEntry(key);
 
-    console.log("✅ Sent message to Discord");
-    res.json({ success: true });
-  } catch (err) {
-    console.error("❌ ERROR:", err);
-    res.status(500).json({ success: false });
+      await axios.post(RAILWAY_URL, payload, {
+        headers: { "Content-Type": "application/json" }
+      });
+
+      console.log("✅ Sent:", payload.name);
+      await deleteEntry(key);
+    }
+  } catch (e) {
+    console.error("Poll error:", e.response?.data || e.message);
   }
-});
+}
+
+setInterval(poll, POLL_INTERVAL);
+console.log("🚀 Roblox → Railway bridge online. Polling every 10s...");
