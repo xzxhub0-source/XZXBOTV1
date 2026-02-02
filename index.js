@@ -1,82 +1,42 @@
 const axios = require("axios");
 
-// ==== CONFIG ====
-const RAILWAY_URL = process.env.RAILWAY_URL || "YOUR_RAILWAY_ENDPOINT";
-const ROBLOX_API_KEY = process.env.ROBLOX_API_KEY || "YOUR_API_KEY";
-const UNIVERSE_ID = "109983668079237"; // Replace with your Roblox game ID
+// ===== CONFIG =====
+const UNIVERSE_ID = "7709344486"; // Your Universe ID
+const DATASTORE_NAME = "ExternalBridgeQueue"; // Roblox DataStore name
+const API_KEY = process.env.API_KEY; // Your Roblox API key from Railway env variable
 
-// ==== HELPERS ====
+if (!API_KEY) {
+    console.error("Error: API_KEY environment variable is not set!");
+    process.exit(1);
+}
+
+// ===== FUNCTION TO FETCH KEYS =====
 async function fetchDataStoreKeys() {
     try {
-        const res = await axios.get(
-            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries`,
-            {
-                headers: { "x-api-key": ROBLOX_API_KEY }
+        const url = `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/${DATASTORE_NAME}/entries`;
+        const response = await axios.get(url, {
+            headers: { "x-api-key": API_KEY }
+        });
+
+        console.log("✅ DataStore keys fetched:", response.data);
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            if (error.response.status === 404) {
+                console.error("❌ DataStore not found! Check Universe ID and DataStore name.");
+            } else if (error.response.status === 403) {
+                console.error("❌ Forbidden! Check your API key permissions.");
+            } else {
+                console.error("⚠️ Error fetching DataStore keys:", error.response.status, error.response.data);
             }
-        );
-        return res.data.entries || [];
-    } catch (err) {
-        console.error("Error fetching DataStore keys:", err.message);
-        return [];
+        } else {
+            console.error("⚠️ Network or other error:", error.message);
+        }
     }
 }
 
-async function fetchDataStoreEntry(key) {
-    try {
-        const res = await axios.get(
-            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries/${key}`,
-            {
-                headers: { "x-api-key": ROBLOX_API_KEY }
-            }
-        );
-        return res.data;
-    } catch (err) {
-        console.error(`Error fetching DataStore entry ${key}:`, err.message);
-        return null;
-    }
-}
+// ===== AUTO-POLL EVERY 5 SECONDS =====
+setInterval(fetchDataStoreKeys, 5000);
 
-async function deleteDataStoreEntry(key) {
-    try {
-        await axios.delete(
-            `https://apis.roblox.com/datastores/v1/universes/${UNIVERSE_ID}/standard-datastores/ExternalBridgeQueue/entries/${key}`,
-            {
-                headers: { "x-api-key": ROBLOX_API_KEY }
-            }
-        );
-    } catch (err) {
-        console.error(`Error deleting DataStore entry ${key}:`, err.message);
-    }
-}
-
-async function sendToRailway(data) {
-    try {
-        await axios.post(RAILWAY_URL, data);
-        console.log("Sent to Railway:", data);
-    } catch (err) {
-        console.error("Error sending to Railway:", err.message);
-    }
-}
-
-// ==== MAIN LOOP ====
-async function poll() {
-    const keys = await fetchDataStoreKeys();
-
-    for (const keyObj of keys) {
-        const key = keyObj.key;
-        const entry = await fetchDataStoreEntry(key);
-        if (!entry) continue;
-
-        // Send to Railway
-        await sendToRailway(entry);
-
-        // Delete processed entry
-        await deleteDataStoreEntry(key);
-    }
-
-    setTimeout(poll, 5000); // poll every 5 seconds
-}
-
-// ==== START ====
-console.log("Starting XZX Base Finder bridge...");
-poll();
+// Run immediately on start
+fetchDataStoreKeys();
