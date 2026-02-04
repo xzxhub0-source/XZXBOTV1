@@ -1,103 +1,91 @@
 const express = require("express");
-const { Client, GatewayIntentBits } = require("discord.js");
+const cors = require("cors");
+const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 
-/* ================= CONFIG ================= */
+const app = express();
+app.use(cors());
+app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 const TOKEN = process.env.DISCORD_TOKEN;
 
+// CHANNELS
 const MEDIUM_CHANNEL = "1445405374462038217";
 const HIGH_CHANNEL = "1466214480009625724";
 
-/* ================= EXPRESS ================= */
-
-const app = express();
-app.use(express.json());
-
-// Railway health check
-app.get("/", (_, res) => {
-    res.status(200).send("XZX HUB Base Finder ONLINE");
-});
-
-// IMPORTANT: bind to 0.0.0.0
-const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 API running on port ${PORT}`);
-});
-
-/* ================= DISCORD ================= */
-
+// DISCORD CLIENT
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds]
 });
 
 client.once("clientReady", () => {
-    console.log(`🤖 Logged in as ${client.user.tag}`);
+  console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
 client.login(TOKEN);
 
-/* ================= KEEP ALIVE ================= */
-// This prevents Railway from killing the container
-setInterval(() => {
-    // noop – keeps event loop alive
-}, 1000);
-
-/* ================= HELPERS ================= */
-
+// FORMAT MONEY
 function formatWorth(num) {
-    if (typeof num !== "number") return "N/A";
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
-    if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
-    return `$${num}`;
+  if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(1)}B`;
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(0)}M`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(0)}K`;
+  return `$${num}`;
 }
 
-/* ================= API ================= */
-
+// API ENDPOINT
 app.post("/report", async (req, res) => {
-    try {
-        const {
-            name,
-            worth,
-            players,
-            maxPlayers,
-            jobIdMobile,
-            jobIdPC,
-            placeId
-        } = req.body;
+  try {
+    const {
+      name,
+      worth,
+      tier,
+      players,
+      maxPlayers,
+      jobId,
+      placeId
+    } = req.body;
 
-        if (!name || !jobIdPC) {
-            return res.status(400).json({ error: "Invalid payload" });
-        }
-
-        const embed = {
-            title: "| XZX HUB | BASE FINDER |",
-            color: 0x0b1020,
-            fields: [
-                { name: "📛 Name", value: name },
-                { name: "💰 Worth", value: formatWorth(worth), inline: true },
-                { name: "👥 Players", value: `${players}/${maxPlayers}`, inline: true },
-                { name: "🆔 Job ID (Mobile)", value: `\`\`\`${jobIdMobile}\`\`\`` },
-                { name: "🆔 Job ID (PC)", value: `\`\`\`${jobIdPC}\`\`\`` },
-                {
-                    name: "🌐 Join Link",
-                    value: `[Click to Join](https://www.roblox.com/games/${placeId}?jobId=${jobIdPC})`
-                }
-            ],
-            footer: {
-                text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleString()} |`
-            }
-        };
-
-        const channelId =
-            worth >= 10_000_000 ? HIGH_CHANNEL : MEDIUM_CHANNEL;
-
-        const channel = await client.channels.fetch(channelId);
-        await channel.send({ embeds: [embed] });
-
-        res.json({ success: true });
-    } catch (err) {
-        console.error("REPORT ERROR:", err);
-        res.status(500).json({ error: "Internal error" });
+    if (!tier || !name || !worth) {
+      return res.status(400).send("Invalid payload");
     }
+
+    const channelId =
+      tier === "HIGH" ? HIGH_CHANNEL : MEDIUM_CHANNEL;
+
+    const channel = await client.channels.fetch(channelId);
+    if (!channel) return res.status(404).send("Channel not found");
+
+    const embed = new EmbedBuilder()
+      .setTitle("| XZX HUB | BASE FINDER |")
+      .setColor(tier === "HIGH" ? 0xff3b3b : 0xffc107)
+      .addFields(
+        { name: "📛 Name", value: name, inline: false },
+        { name: "💰 Worth", value: formatWorth(worth), inline: true },
+        { name: "👥 Players", value: `${players}/${maxPlayers}`, inline: true },
+        {
+          name: "🆔 Job ID",
+          value: `\`\`\`${jobId}\`\`\``,
+          inline: false
+        },
+        {
+          name: "🌐 Join Link",
+          value: `[Click to Join](https://www.roblox.com/games/${placeId}?jobId=${jobId})`,
+          inline: false
+        }
+      )
+      .setFooter({
+        text: `PROVIDED BY XZX HUB | ${new Date().toLocaleString()}`
+      });
+
+    await channel.send({ embeds: [embed] });
+
+    res.send("OK");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 API running on port ${PORT}`);
 });
