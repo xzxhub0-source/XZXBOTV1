@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const express = require("express");
 const bodyParser = require("body-parser");
 
-// --------- EXPRESS SETUP (Optional API) ---------
+// --------- EXPRESS SETUP (Optional API for Lua) ---------
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -12,7 +12,9 @@ app.get("/", (req, res) => res.send("API running"));
 app.listen(PORT, () => console.log(`🚀 API running on port ${PORT}`));
 
 // --------- DISCORD BOT SETUP ---------
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+});
 
 // Environment variables from Railway
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -93,7 +95,6 @@ async function sendList(channelId, list) {
     message += `• ${item.name} — ${item.price}\n`;
   });
 
-  // Send in chunks if too long
   const chunkSize = 2000;
   for (let i = 0; i < message.length; i += chunkSize) {
     await channel.send(message.slice(i, i + chunkSize));
@@ -103,8 +104,6 @@ async function sendList(channelId, list) {
 // --------- BOT EVENTS ---------
 client.once("clientReady", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-
-  // Send lists to correct channels
   sendList(MEDIUM_CHANNEL_ID, mediumList);
   sendList(HIGH_CHANNEL_ID, highList);
 });
