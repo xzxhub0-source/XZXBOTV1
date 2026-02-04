@@ -1,17 +1,17 @@
 {
   "name": "xzx-base-finder",
   "version": "2.1.0",
-  "description": "XZX HUB Roblox Base Finder",
+  "description": "Bot to post medium/high base lists",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "engines": {
-    "node": "18.x"
+    "node": ">=18"
   },
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "express": "^4.19.2",
-    "cors": "^2.8.5"
+    "discord.js": "^14.14.0",
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2"
   }
 }
