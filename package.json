@@ -1,6 +1,6 @@
 {
   "name": "xzx-base-finder",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,7 +9,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "discord.js": "^14.14.1"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
   },
   "engines": {
     "node": "18.x"
