@@ -1,83 +1,62 @@
-const express = require("express");
-const cors = require("cors");
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
-
-require("dotenv").config(); // Optional, only if you want to use .env
+const express = require("express");
+const bodyParser = require("body-parser");
+const crypto = require("crypto");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-/* ======================
-   EXPRESS KEEP-ALIVE
-====================== */
-app.get("/", (req, res) => {
-  res.status(200).send("XZX Base Finder API Online");
-});
+// ✅ Read Discord token from environment
+const TOKEN = process.env.DISCORD_TOKEN;
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`🚀 API running on port ${PORT}`);
-});
+// Discord channels
+const MEDIUM_CHANNEL = "1445405374462038217"; // Medium Base Finder
+const HIGH_CHANNEL = "1466214480009625724";   // High Base Finder
 
-/* ======================
-   DISCORD BOT
-====================== */
+// Initialize Discord client
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once("ready", () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
+client.once("clientReady", () => {
+    console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(TOKEN);
 
-/* ======================
-   DISCORD CHANNEL IDs
-====================== */
-const ORIGINAL_CHANNEL_ID = "original_channel_here"; // replace with your original channel
-const NEW_CHANNEL_ID = "1466214480009625724"; // new channel
-
-/* ======================
-   HANDLE POST REQUESTS
-====================== */
+// POST endpoint for Roblox base finder
 app.post("/finder", async (req, res) => {
-  try {
-    const {
-      name,
-      worth,
-      players,
-      jobIdMobile,
-      jobIdPC,
-      joinLink,
-      channelId
-    } = req.body;
+    const { name, worth, players } = req.body;
+    if (!name || !worth) return res.sendStatus(400);
 
-    // Determine which channel
-    const targetChannelId =
-      channelId === NEW_CHANNEL_ID ? NEW_CHANNEL_ID : ORIGINAL_CHANNEL_ID;
+    // Convert worth string to number
+    const numericWorth = parseFloat(
+        worth.replace(/[$,kMB]/gi, "")
+    ) * (worth.includes("B") ? 1_000_000_000 : worth.includes("M") ? 1_000_000 : worth.includes("k") ? 1000 : 1);
 
-    const channel = await client.channels.fetch(targetChannelId);
-    if (!channel) return res.status(404).send("Channel not found");
+    // Choose channel based on worth
+    const channelId = numericWorth >= 200_000_000 ? HIGH_CHANNEL : MEDIUM_CHANNEL;
 
-    // Build a clean Discord-style embed
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    if (!channel) return res.status(400).send("Invalid channel");
+
+    // Build embed
     const embed = new EmbedBuilder()
-      .setTitle("| XZX HUB | BASE FINDER |")
-      .setColor(0x1f1f2f) // dark gradient feel
-      .addFields(
-        { name: "📛 Name", value: name, inline: true },
-        { name: "💰 Worth", value: worth, inline: true },
-        { name: "👥 Players", value: players, inline: true },
-        { name: "🆔 Job ID (Mobile)", value: `\`${jobIdMobile}\``, inline: false },
-        { name: "🆔 Job ID (PC)", value: `\`${jobIdPC}\``, inline: false },
-        { name: "🌐 Join Link", value: `[Click to Join](${joinLink})`, inline: false }
-      )
-      .setFooter({ text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleString()} |` });
+        .setTitle("| XZX HUB | BASE FINDER |")
+        .setColor(0x2f3136) // Dark Discord-style
+        .addFields(
+            { name: "📛 Name", value: name, inline: true },
+            { name: "💰 Worth", value: worth, inline: true },
+            { name: "👥 Players", value: players || "N/A", inline: true },
+            { name: "🆔 Job ID (Mobile)", value: "`" + crypto.randomUUID() + "`", inline: true },
+            { name: "🆔 Job ID (PC)", value: "`" + crypto.randomUUID() + "`", inline: true },
+            { name: "🌐 Join Link", value: "[Click to Join](https://roblox.com)", inline: true }
+        )
+        .setFooter({ text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleString()}` });
 
     await channel.send({ embeds: [embed] });
+    res.sendStatus(200);
+});
 
-    res.status(200).send("✅ Embed sent");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error sending embed");
-  }
+// Start server
+app.listen(process.env.PORT || 8080, () => {
+    console.log("🚀 API running on port 8080");
 });
