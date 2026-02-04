@@ -12,7 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Root route for keep-alive
 app.get("/", (req, res) => {
     res.status(200).send("🚀 XZX Base Finder Online");
 });
@@ -20,29 +19,18 @@ app.get("/", (req, res) => {
 // ======================
 // DISCORD BOT SETUP
 // ======================
-const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
-});
-
-// Replace with your Discord channel ID
-const DISCORD_CHANNEL_ID = "1445405374462038217";
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const DISCORD_CHANNEL_ID = "1445405374462038217"; // Change to your channel
 
 client.once("ready", async () => {
     console.log(`🤖 Logged in as ${client.user.tag}`);
-
-    try {
-        const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-        if (channel) await channel.send("✅ XZX Base Finder is now online!");
-    } catch (err) {
-        console.error("❌ Could not send startup message:", err);
-    }
 });
 
-// Log in using environment variable (safe)
 if (!process.env.DISCORD_TOKEN) {
-    console.error("❌ DISCORD_TOKEN not set in environment variables!");
+    console.error("❌ DISCORD_TOKEN environment variable not set!");
     process.exit(1);
 }
+
 client.login(process.env.DISCORD_TOKEN);
 
 // ======================
@@ -50,22 +38,40 @@ client.login(process.env.DISCORD_TOKEN);
 // ======================
 app.post("/finder", async (req, res) => {
     try {
-        const { name, worth, player } = req.body;
-
-        if (!name || !worth) return res.status(400).send("Missing data");
+        const {
+            name = "Unknown",
+            worth = "N/A",
+            players = "0/0",
+            jobIdMobile = "0000-0000-0000-0000",
+            jobIdPC = "0000-0000-0000-0000",
+            joinLink = "https://www.roblox.com"
+        } = req.body;
 
         const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-        if (channel) {
-            await channel.send(`🟡 **Base Found!**
-**Name:** ${name}
-**Worth:** ${worth}
-**Player:** ${player}`);
-        }
+        if (!channel) return res.status(404).send("Discord channel not found");
 
-        res.status(200).send("Data sent to Discord ✅");
+        // Create embed
+        const embed = {
+            title: "| XZX HUB | BASE FINDER |",
+            color: 0x2F3136,
+            description: "Detailed information about the detected base.",
+            fields: [
+                { name: "📛 Name", value: name, inline: true },
+                { name: "💰 Worth", value: worth.toString(), inline: true },
+                { name: "👥 Players", value: players, inline: true },
+                { name: "🆔 Job ID (Mobile)", value: `\`\`\`\n${jobIdMobile}\n\`\`\``, inline: false },
+                { name: "🆔 Job ID (PC)", value: `\`\`\`\n${jobIdPC}\n\`\`\``, inline: false },
+                { name: "🌐 Join Link", value: `[Click to Join](${joinLink})`, inline: false }
+            ],
+            footer: { text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleString()}` },
+            timestamp: new Date().toISOString()
+        };
+
+        await channel.send({ embeds: [embed] });
+        res.status(200).send("✅ Embed sent to Discord");
     } catch (err) {
-        console.error("Error sending to Discord:", err);
-        res.status(500).send("Failed to send data to Discord ❌");
+        console.error("Error sending embed:", err);
+        res.status(500).send("❌ Failed to send embed");
     }
 });
 
@@ -73,20 +79,9 @@ app.post("/finder", async (req, res) => {
 // START SERVER
 // ======================
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-    console.log(`🚀 API running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 API running on port ${PORT}`));
 
 // ======================
-// HEARTBEAT LOG
+// HEARTBEAT
 // ======================
-setInterval(() => {
-    console.log("💓 Alive check");
-}, 30000);
-
-// ======================
-// UNHANDLED PROMISE REJECTION
-// ======================
-process.on("unhandledRejection", (err) => {
-    console.error("Unhandled Rejection:", err);
-});
+setInterval(() => console.log("💓 Alive check"), 30000);
