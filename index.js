@@ -1,62 +1,99 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const express = require("express");
-const bodyParser = require("body-parser");
-const crypto = require("crypto");
+const cors = require("cors");
+const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 
 const app = express();
-app.use(bodyParser.json());
+app.use(cors());
+app.use(express.json());
 
-// ✅ Read Discord token from environment
-const TOKEN = process.env.DISCORD_TOKEN;
+/* ======================
+   DISCORD BOT
+====================== */
 
-// Discord channels
-const MEDIUM_CHANNEL = "1445405374462038217"; // Medium Base Finder
-const HIGH_CHANNEL = "1466214480009625724";   // High Base Finder
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds]
+});
 
-// Initialize Discord client
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-client.once("clientReady", () => {
+client.once("ready", () => {
     console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-client.login(TOKEN);
+client.login(process.env.DISCORD_TOKEN);
 
-// POST endpoint for Roblox base finder
+/* ======================
+   CHANNEL IDS
+====================== */
+
+const CHANNELS = {
+    medium: "1445405374462038217", // MEDIUM-BASE-FINDER
+    high: "1466214480009625724"    // HIGH-BASE-FINDER
+};
+
+/* ======================
+   UTILS
+====================== */
+
+function formatWorth(num) {
+    if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(1)}B`;
+    if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
+    if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}k`;
+    return `$${num}`;
+}
+
+/* ======================
+   API ENDPOINT
+====================== */
+
 app.post("/finder", async (req, res) => {
-    const { name, worth, players } = req.body;
-    if (!name || !worth) return res.sendStatus(400);
+    try {
+        const {
+            name,
+            worth,
+            players,
+            maxPlayers,
+            jobId,
+            placeId,
+            channel
+        } = req.body;
 
-    // Convert worth string to number
-    const numericWorth = parseFloat(
-        worth.replace(/[$,kMB]/gi, "")
-    ) * (worth.includes("B") ? 1_000_000_000 : worth.includes("M") ? 1_000_000 : worth.includes("k") ? 1000 : 1);
+        if (!CHANNELS[channel]) {
+            return res.status(400).json({ error: "Invalid channel type" });
+        }
 
-    // Choose channel based on worth
-    const channelId = numericWorth >= 200_000_000 ? HIGH_CHANNEL : MEDIUM_CHANNEL;
+        const discordChannel = await client.channels.fetch(CHANNELS[channel]);
 
-    const channel = await client.channels.fetch(channelId).catch(() => null);
-    if (!channel) return res.status(400).send("Invalid channel");
+        const embed = new EmbedBuilder()
+            .setColor(0x0f172a)
+            .setTitle("| XZX HUB | BASE FINDER |")
+            .addFields(
+                { name: "📛 Name", value: name || "Unknown", inline: false },
+                { name: "💰 Worth", value: formatWorth(worth), inline: true },
+                { name: "👥 Players", value: `${players}/${maxPlayers}`, inline: true },
+                { name: "🆔 Job ID (PC)", value: `\`\`\`${jobId}\`\`\``, inline: false },
+                { name: "🌐 Join Link", value: `[Click to Join](https://www.roblox.com/games/start?placeId=${placeId}&jobId=${jobId})`, inline: false }
+            )
+            .setFooter({
+                text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleTimeString()} |`
+            });
 
-    // Build embed
-    const embed = new EmbedBuilder()
-        .setTitle("| XZX HUB | BASE FINDER |")
-        .setColor(0x2f3136) // Dark Discord-style
-        .addFields(
-            { name: "📛 Name", value: name, inline: true },
-            { name: "💰 Worth", value: worth, inline: true },
-            { name: "👥 Players", value: players || "N/A", inline: true },
-            { name: "🆔 Job ID (Mobile)", value: "`" + crypto.randomUUID() + "`", inline: true },
-            { name: "🆔 Job ID (PC)", value: "`" + crypto.randomUUID() + "`", inline: true },
-            { name: "🌐 Join Link", value: "[Click to Join](https://roblox.com)", inline: true }
-        )
-        .setFooter({ text: `| PROVIDED BY XZX HUB | AT ${new Date().toLocaleString()}` });
+        await discordChannel.send({ embeds: [embed] });
 
-    await channel.send({ embeds: [embed] });
-    res.sendStatus(200);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal error" });
+    }
 });
 
-// Start server
-app.listen(process.env.PORT || 8080, () => {
-    console.log("🚀 API running on port 8080");
+/* ======================
+   KEEP ALIVE
+====================== */
+
+app.get("/", (req, res) => {
+    res.send("XZX Base Finder Online");
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+    console.log(`🚀 API running on port ${PORT}`);
 });
