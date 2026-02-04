@@ -1,22 +1,27 @@
 const express = require("express");
 const { Client, GatewayIntentBits } = require("discord.js");
 
-const app = express();
-app.use(express.json());
+/* ================= CONFIG ================= */
 
-/* ================= ENV ================= */
-
-const TOKEN = process.env.DISCORD_TOKEN;
 const PORT = process.env.PORT || 8080;
+const TOKEN = process.env.DISCORD_TOKEN;
 
 const MEDIUM_CHANNEL = "1445405374462038217";
 const HIGH_CHANNEL = "1466214480009625724";
 
 /* ================= EXPRESS ================= */
 
-// REQUIRED so Railway doesn't kill the container
-app.get("/", (req, res) => {
-    res.status(200).send("XZX HUB Base Finder is running.");
+const app = express();
+app.use(express.json());
+
+// Railway health check
+app.get("/", (_, res) => {
+    res.status(200).send("XZX HUB Base Finder ONLINE");
+});
+
+// IMPORTANT: bind to 0.0.0.0
+const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 API running on port ${PORT}`);
 });
 
 /* ================= DISCORD ================= */
@@ -31,14 +36,20 @@ client.once("clientReady", () => {
 
 client.login(TOKEN);
 
+/* ================= KEEP ALIVE ================= */
+// This prevents Railway from killing the container
+setInterval(() => {
+    // noop – keeps event loop alive
+}, 1000);
+
 /* ================= HELPERS ================= */
 
-function formatWorth(value) {
-    if (typeof value !== "number") return "N/A";
-    if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
-    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-    return `$${value}`;
+function formatWorth(num) {
+    if (typeof num !== "number") return "N/A";
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(1)}K`;
+    return `$${num}`;
 }
 
 /* ================= API ================= */
@@ -56,7 +67,7 @@ app.post("/report", async (req, res) => {
         } = req.body;
 
         if (!name || !jobIdPC) {
-            return res.status(400).json({ error: "Bad payload" });
+            return res.status(400).json({ error: "Invalid payload" });
         }
 
         const embed = {
@@ -86,13 +97,7 @@ app.post("/report", async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error(err);
+        console.error("REPORT ERROR:", err);
         res.status(500).json({ error: "Internal error" });
     }
-});
-
-/* ================= START ================= */
-
-app.listen(PORT, () => {
-    console.log(`🚀 API running on port ${PORT}`);
 });
