@@ -1,6 +1,7 @@
 {
   "name": "xzx-base-finder",
   "version": "2.1.0",
+  "description": "XZX HUB Roblox Base Finder",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -9,7 +10,8 @@
     "node": "18.x"
   },
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "express": "^4.19.2"
+    "discord.js": "^14.14.1",
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
   }
 }
