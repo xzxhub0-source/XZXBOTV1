@@ -4,7 +4,6 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config(); // Load DISCORD_TOKEN from .env
-const fetch = require("node-fetch"); // npm install node-fetch@2
 const { Client, GatewayIntentBits } = require("discord.js");
 
 // ======================
@@ -14,14 +13,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 8080;
-
 // Root route for keep-alive
 app.get("/", (req, res) => {
     res.status(200).send("🚀 XZX Base Finder Online");
 });
 
-// POST endpoint to send logs to Discord
+// Example POST endpoint to send messages to Discord
 app.post("/log", async (req, res) => {
     try {
         const { message } = req.body;
@@ -38,6 +35,7 @@ app.post("/log", async (req, res) => {
 });
 
 // Start Express server
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`🚀 API running on port ${PORT}`);
 });
@@ -49,12 +47,12 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-const DISCORD_CHANNEL_ID = "1445405374462038217"; // Replace with your channel ID
+const DISCORD_CHANNEL_ID = "1445405374462038217"; // Your channel ID here
 
 client.once("ready", async () => {
     console.log(`🤖 Logged in as ${client.user.tag}`);
 
-    // Send startup message to channel
+    // Optional: send startup message to channel
     try {
         const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
         await channel.send("✅ XZX Base Finder is now online!");
@@ -67,29 +65,15 @@ client.once("ready", async () => {
 client.login(process.env.DISCORD_TOKEN);
 
 // ======================
-// SELF-PING / HEARTBEAT
+// HEARTBEAT LOG
 // ======================
-
-// Logs every 30s
-setInterval(() => console.log("👾 Alive check"), 30_000);
-
-// Ping self every 5 minutes to prevent container shutdown
-setInterval(async () => {
-    try {
-        await fetch(`http://localhost:${PORT}/`);
-        console.log("🟣 Self-ping success");
-    } catch (err) {
-        console.warn("⚠️ Self-ping failed:", err.message);
-    }
-}, 5 * 60 * 1000); // 5 minutes
+setInterval(() => {
+    console.log("👾 Alive check");
+}, 30000);
 
 // ======================
-// HANDLE UNHANDLED ERRORS
+// UNHANDLED PROMISE REJECTION
 // ======================
 process.on("unhandledRejection", (err) => {
     console.error("Unhandled Rejection:", err);
-});
-
-process.on("uncaughtException", (err) => {
-    console.error("Uncaught Exception:", err);
 });
