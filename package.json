@@ -1,14 +1,14 @@
 {
   "name": "xzx-base-finder",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.13.0",
+    "discord.js": "^15.8.0",
     "express": "^4.18.2",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^3.4.1",
     "dotenv": "^16.3.1"
   }
 }
