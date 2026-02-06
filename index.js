@@ -1,56 +1,66 @@
 import express from "express";
+import { Client, GatewayIntentBits } from "discord.js";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
-import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 
 dotenv.config();
 
+// ===== EXPRESS KEEP ALIVE =====
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+app.get("/", (req, res) => res.send("Server is running for keep-alive..."));
+
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+// ===== DISCORD CLIENT =====
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
-const HIGH_CHANNEL_ID = process.env.HIGH_CHANNEL_ID;
-const MEDIUM_CHANNEL_ID = process.env.MEDIUM_CHANNEL_ID;
-
-// Express Keep-Alive Server
-const app = express();
-app.get("/", (req, res) => res.send("❤️ Keep alive"));
-app.listen(process.env.PORT || 8080, () => console.log("Server is running for keep-alive..."));
-
-// Mock function to get bases (replace with your real logic)
-async function getBases(type) {
-    // Example response
-    return [
-        { name: type === "high" ? "La Vacca Saturno Saturnita" : "Pumpkin Spyderini", users: Math.floor(Math.random() * 8), jobId: Math.random() > 0.5 ? "PC" : "Mobile" }
-    ];
-}
-
-// Send list to Discord
-async function sendList(type) {
-    const channelId = type === "high" ? HIGH_CHANNEL_ID : MEDIUM_CHANNEL_ID;
-    const channel = await client.channels.fetch(channelId).catch(() => null);
-    if (!channel) return console.log(`❌ Channel ${channelId} not found`);
-
-    const bases = await getBases(type);
-
-    for (const base of bases) {
-        const embed = new EmbedBuilder()
-            .setTitle(`${base.name}`)
-            .setDescription(`Users: ${base.users}/8\nDevice: ${base.jobId}`)
-            .setColor(type === "high" ? 0xff0000 : 0xffa500)
-            .setTimestamp();
-
-        channel.send({ embeds: [embed] }).catch(console.error);
-    }
-}
-
-// Auto send every 30s
-setInterval(() => {
-    sendList("high");
-    sendList("medium");
-}, 30000);
-
-// Discord Bot Login
-client.on("ready", () => {
-    console.log(`🤖 Logged in as ${client.user.tag}`);
+client.on("clientReady", () => {
+  console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
+// ===== BASE FINDER FUNCTION =====
+async function checkServers() {
+  // Example API URLs (replace with your own)
+  const highURL = "https://xzxbotv1-production.up.railway.app/finder/high";
+  const mediumURL = "https://xzxbotv1-production.up.railway.app/finder/medium";
+
+  try {
+    const highRes = await fetch(highURL);
+    const highData = await highRes.json();
+
+    const mediumRes = await fetch(mediumURL);
+    const mediumData = await mediumRes.json();
+
+    // Format example: 0/8 users
+    const highMessage = highData.map(
+      (b) => `🏰 ${b.name} | Users: ${b.users}/8 | Job: ${b.job || "N/A"}`
+    ).join("\n") || "No High Base found";
+
+    const mediumMessage = mediumData.map(
+      (b) => `🏰 ${b.name} | Users: ${b.users}/8 | Job: ${b.job || "N/A"}`
+    ).join("\n") || "No Medium Base found";
+
+    // Send to Discord
+    const highChannel = await client.channels.fetch(process.env.HIGH_CHANNEL_ID);
+    const mediumChannel = await client.channels.fetch(process.env.MEDIUM_CHANNEL_ID);
+
+    if (highChannel) await highChannel.send(highMessage);
+    if (mediumChannel) await mediumChannel.send(mediumMessage);
+
+    console.log("✅ Server info sent to Discord");
+
+  } catch (err) {
+    console.error("❌ Error fetching/sending server info:", err);
+  }
+}
+
+// ===== AUTO CHECK LOOP =====
+setInterval(() => {
+  console.log("🔁 Checking servers...");
+  checkServers();
+}, 30_000); // every 30 seconds
+
+// ===== LOGIN DISCORD =====
 client.login(process.env.DISCORD_TOKEN);
