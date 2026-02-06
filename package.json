@@ -1,14 +1,15 @@
 {
-  "name": "xzx-base-finder",
+  "name": "my-railway-bot",
   "version": "1.0.0",
-  "description": "XZX HUB Roblox Base Finder Discord Bot",
+  "description": "Discord webhook bot for Railway",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "node-fetch": "^2.6.12",
-    "uuid": "^9.0.0"
+    "node-fetch": "^2.6.12"
+  },
+  "engines": {
+    "node": "18"
   }
 }
