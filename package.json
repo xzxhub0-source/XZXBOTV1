@@ -1,14 +1,14 @@
 {
   "name": "xzx-base-finder",
-  "version": "2.2.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "XZX HUB Roblox Base Finder Discord Bot",
+  "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^15.8.0",
-    "express": "^4.18.2",
-    "node-fetch": "^3.4.1",
-    "dotenv": "^16.3.1"
+    "node-fetch": "^2.6.12",
+    "uuid": "^9.0.0"
   }
 }
