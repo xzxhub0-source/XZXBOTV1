@@ -1,66 +1,51 @@
-import express from "express";
-importvbBbzbzhz { Client, GatewayIntentBits } from "discord.js";
-import fetch from "node-fetch";
-import dotenv from "dotenv";
+const fetch = require("node-fetch");
+const { v4: uuidv4 } = require("uuid");
+const bases = require("./bases.json");
 
-dotenv.config();
+// Environment variables from Railway
+const WEBHOOK_MEDIUM = process.env.WEBHOOK_MEDIUM;
+const WEBHOOK_HIGH = process.env.WEBHOOK_HIGH;
+const WEBHOOK_ULTIMATE = process.env.WEBHOOK_ULTIMATE;
 
-// ===== EXPRESS KEEP ALIVE =====
-const app = express();
-const PORT = process.env.PORT || 8080;
+function sendEmbed(base, tier) {
+    let webhookUrl;
+    if(tier === "medium") webhookUrl = WEBHOOK_MEDIUM;
+    if(tier === "high") webhookUrl = WEBHOOK_HIGH;
+    if(tier === "ultimate") webhookUrl = WEBHOOK_ULTIMATE;
 
-app.get("/", (req, res) => res.send("Server is running for keep-alive..."));
+    const now = new Date();
+    const timestamp = now.toISOString();
 
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+    const embed = {
+        username: "XZX HUB | Base Finder",
+        avatar_url: "https://i.imgur.com/AfFp7pu.png",
+        embeds: [{
+            title: "| XZX HUB | BASE FINDER |",
+            color: 0x1F1F1F,
+            fields: [
+                { name: "📛 Name", value: base.name, inline: true },
+                { name: "💰 Worth", value: base.worth || "N/A", inline: true },
+                { name: "👥 Players", value: "0/0", inline: true },
+                { name: "🆔 Job ID (Mobile)", value: "``" + uuidv4() + "``", inline: true },
+                { name: "🆔 Job ID (PC)", value: "``" + uuidv4() + "``", inline: true },
+                { name: "🌐 Join Link", value: "[Click to Join](https://www.roblox.com/games/1234567890)", inline: true }
+            ],
+            footer: {
+                text: `| PROVIDED BY XZX HUB | AT ${timestamp} |`
+            }
+        }]
+    };
 
-// ===== DISCORD CLIENT =====
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
-
-client.on("clientReady", () => {
-  console.log(`🤖 Logged in as ${client.user.tag}`);
-});
-
-// ===== BASE FINDER FUNCTION =====
-async function checkServers() {
-  // Example API URLs (replace with your own)
-  const highURL = "https://xzxbotv1-production.up.railway.app/finder/high";
-  const mediumURL = "https://xzxbotv1-production.up.railway.app/finder/medium";
-
-  try {
-    const highRes = await fetch(highURL);
-    const highData = await highRes.json();
-
-    const mediumRes = await fetch(mediumURL);
-    const mediumData = await mediumRes.json();
-
-    // Format example: 0/8 users
-    const highMessage = highData.map(
-      (b) => `🏰 ${b.name} | Users: ${b.users}/8 | Job: ${b.job || "N/A"}`
-    ).join("\n") || "No High Base found";
-
-    const mediumMessage = mediumData.map(
-      (b) => `🏰 ${b.name} | Users: ${b.users}/8 | Job: ${b.job || "N/A"}`
-    ).join("\n") || "No Medium Base found";
-
-    // Send to Discord
-    const highChannel = await client.channels.fetch(process.env.HIGH_CHANNEL_ID);
-    const mediumChannel = await client.channels.fetch(process.env.MEDIUM_CHANNEL_ID);
-
-    if (highChannel) await highChannel.send(highMessage);
-    if (mediumChannel) await mediumChannel.send(mediumMessage);
-
-    console.log("✅ Server info sent to Discord");
-
-  } catch (err) {
-    console.error("❌ Error fetching/sending server info:", err);
-  }
+    fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(embed)
+    })
+    .then(res => console.log(`Sent ${tier} base: ${base.name}`))
+    .catch(err => console.error(err));
 }
 
-// ===== AUTO CHECK LOOP =====
-setInterval(() => {
-  console.log("🔁 Checking servers...");
-  checkServers();
-}, 30_000); // every 30 seconds
-
-// ===== LOGIN DISCORD =====
-client.login(process.env.DISCORD_TOKEN);
+// Example: send all bases (for testing)
+["medium","high","ultimate"].forEach(tier => {
+    bases[tier].forEach(base => sendEmbed(base, tier));
+});
