@@ -1,5 +1,5 @@
 import express from "express";
-import { Client, GatewayIntentBits } from "discord.js";
+importvbBbzbzhz { Client, GatewayIntentBits } from "discord.js";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
 
